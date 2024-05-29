@@ -20,7 +20,7 @@
 <meta property="og:image" content="http://example.com/2024/05/14/%E5%9F%BA%E4%BA%8EESP32%E7%9A%84%E5%B9%B3%E8%A1%A1%E5%B0%8F%E8%BD%A6/xiazai.png">
 <meta property="og:image" content="http://example.com/2024/05/14/%E5%9F%BA%E4%BA%8EESP32%E7%9A%84%E5%B9%B3%E8%A1%A1%E5%B0%8F%E8%BD%A6/ESP32.png">
 <meta property="article:published_time" content="2024-05-14T04:19:10.000Z">
-<meta property="article:modified_time" content="2024-05-16T08:31:45.298Z">
+<meta property="article:modified_time" content="2024-05-29T08:45:49.259Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="ESP32">
 <meta property="article:tag" content="卡尔曼滤波">
@@ -186,7 +186,9 @@
         <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>这是一个基于ESP32的平衡车项目，为初学者实现从0到1。是一个很好的PID控制案例。</p>
 <span id="more"></span>
 
-<h1 id="理论介绍"><a href="#理论介绍" class="headerlink" title="理论介绍"></a>理论介绍</h1><h1 id="材料准备"><a href="#材料准备" class="headerlink" title="材料准备"></a>材料准备</h1><h1 id="3-0-代码编写"><a href="#3-0-代码编写" class="headerlink" title="3.0 代码编写"></a>3.0 代码编写</h1><h2 id="3-1-ESP32开发环境"><a href="#3-1-ESP32开发环境" class="headerlink" title="3.1 ESP32开发环境"></a>3.1 ESP32开发环境</h2><p>在Arduino IDE中导入ESP32开发板管理器地址，这里我使用的是：</p>
+<h1 id="1-理论介绍"><a href="#1-理论介绍" class="headerlink" title="1 理论介绍"></a>1 理论介绍</h1><h1 id="2-材料准备"><a href="#2-材料准备" class="headerlink" title="2 材料准备"></a>2 材料准备</h1><p>这里计划打造一个丐版的平衡小车，所以用料简单，便宜。</p>
+<p>首先是一对电机，这里选择直流电机，可以不带编码器，由于后续个人想做一些升级所以本人购买的是带编码器的直流电机。</p>
+<h1 id="3-代码编写"><a href="#3-代码编写" class="headerlink" title="3 代码编写"></a>3 代码编写</h1><h2 id="3-1-ESP32开发环境"><a href="#3-1-ESP32开发环境" class="headerlink" title="3.1 ESP32开发环境"></a>3.1 ESP32开发环境</h2><p>在Arduino IDE中导入ESP32开发板管理器地址，这里我使用的是：</p>
 <blockquote>
 <p><a target="_blank" rel="noopener" href="https://arduino.me/packages/esp32.json">https://arduino.me/packages/esp32.json</a></p>
 </blockquote>
@@ -201,20 +203,266 @@
 <p><img src="/2024/05/14/%E5%9F%BA%E4%BA%8EESP32%E7%9A%84%E5%B9%B3%E8%A1%A1%E5%B0%8F%E8%BD%A6/ESP32.png" alt="alt text"></p>
 <h2 id="3-2-模块划分"><a href="#3-2-模块划分" class="headerlink" title="3.2 模块划分"></a>3.2 模块划分</h2><p>可以根据前面原理的分析，可以将平衡小车的代码分为几个模块：</p>
 <ol>
-<li>MPU6050获取角度和角速度——传感器</li>
+<li>MPU6050获取角度和角速度，并使用卡尔曼滤波减少数据的漂移</li>
 <li>电机驱动</li>
-<li>对传感器获得的数据进行滤波</li>
 <li>PID控制器</li>
 </ol>
 <h2 id="3-3-MPU6050模块的使用"><a href="#3-3-MPU6050模块的使用" class="headerlink" title="3.3 MPU6050模块的使用"></a>3.3 MPU6050模块的使用</h2><p>MPU6050是一款集成了三轴陀螺仪和三轴加速度计的6轴运动处理单元，广泛应用于各种需要精确运动检测和控制的场景中。</p>
-<h3 id="3-3-1-基本功能和构成："><a href="#3-3-1-基本功能和构成：" class="headerlink" title="3.3.1 基本功能和构成："></a>3.3.1 基本功能和构成：</h3><ol>
+<h3 id="3-3-1-基本功能和构成"><a href="#3-3-1-基本功能和构成" class="headerlink" title="3.3.1 基本功能和构成"></a>3.3.1 基本功能和构成</h3><ol>
 <li>三轴陀螺仪：能够测量物体绕X、Y、Z三个轴的旋转角速度，对于检测物体的旋转运动至关重要。</li>
 <li>三轴加速度计：可以感知X、Y、Z三个方向上的线性加速度，有助于确定物体的位置变化和重力方向。</li>
 <li>数字运动处理器(DMP)：这是一个硬件加速引擎，能够处理复杂的运动数据融合，减轻了主处理器的负担，提高了效率。</li>
 </ol>
-<h3 id="工作原理："><a href="#工作原理：" class="headerlink" title="工作原理："></a>工作原理：</h3><p>MPU6050通过内置的传感器测量加速度和角速度，这些原始数据可以通过I²C或SPI接口传输给微控制器或单片机进行进一步处理。通过算法（如卡尔曼滤波）结合加速度计和陀螺仪的数据，可以计算出物体的姿态信息，包括俯仰角(Pitch)、翻滚角(Roll)和偏航角(Yaw)。</p>
-<p>其实可以看到，它直接获得的是角速度和角加速度，是通过这两个值，并利用一些算法来计算物体的姿态，也就是角度。所以当我们想要快速入手</p>
-<h3 id="MPU6050代码实现"><a href="#MPU6050代码实现" class="headerlink" title="MPU6050代码实现"></a>MPU6050代码实现</h3><h2 id="完整代码"><a href="#完整代码" class="headerlink" title="完整代码"></a>完整代码</h2><h1 id="实物调试"><a href="#实物调试" class="headerlink" title="实物调试"></a>实物调试</h1>
+<h3 id="3-3-2-工作原理和为什么使用卡尔曼滤波"><a href="#3-3-2-工作原理和为什么使用卡尔曼滤波" class="headerlink" title="3.3.2 工作原理和为什么使用卡尔曼滤波"></a>3.3.2 工作原理和为什么使用卡尔曼滤波</h3><p>MPU6050通过内置的传感器测量加速度和角速度，这些原始数据可以通过I²C或SPI接口传输给微控制器或单片机进行进一步处理。通过算法（如卡尔曼滤波）结合加速度计和陀螺仪的数据，可以计算出物体的姿态信息，包括俯仰角(Pitch)、翻滚角(Roll)和偏航角(Yaw)。</p>
+<p>其实可以看到，它直接获得的是角速度和角加速度，然后利用积分计算求得的角度，在这个过程中会出现积分的累计误差，所以这个时候就需要使用一些滤波函数来减少累计的误差，在数据上的体现就是，很多人在使用MPU6050的时候会遇到数据漂移的情况（数据会自己逐渐增大），使用了滤波算法就会进行一定的调整，也会使得数据更加稳定。这里我们使用的是卡尔曼滤波，相对简单，效果好。</p>
+<h3 id="3-3-3-硬件连线"><a href="#3-3-3-硬件连线" class="headerlink" title="3.3.3 硬件连线"></a>3.3.3 硬件连线</h3><h3 id="3-3-4-MPU6050代码实现"><a href="#3-3-4-MPU6050代码实现" class="headerlink" title="3.3.4 MPU6050代码实现"></a>3.3.4 MPU6050代码实现</h3><pre><code>#include &lt;Wire.h&gt;    // 引入Wire库，用于I2C通信
+#include &lt;MPU6050.h&gt; // 引入MPU6050库，提供与MPU6050传感器通信的功能
+
+MPU6050 mpu;         // 创建MPU6050对象
+
+#define RAD_TO_DEG 57.2957795131 // 定义弧度转换为度的常量
+
+// 定义卡尔曼滤波相关参数
+float dt = 0.01;     // 时间间隔，单位秒
+float roll;          // 当前估计的滚动角（绕X轴旋转）
+float Q_angle = 0.001; // 过程噪声协方差（角度）
+float Q_gyro = 0.003;  // 过程噪声协方差（角速度）
+float R_angle = 0.03;  // 测量噪声协方差
+float P[2][2] = &#123;&#123;1, 0&#125;, &#123;0, 1&#125;&#125;;// 卡尔曼滤波的预测误差协方差矩阵
+
+void setup() &#123;
+
+    Serial.begin(9600); //设置串口波特率，需要和上位机相同
+    Wire.begin(13, 15); //使用Wire设置I2C的IO口，MPU6050需要使用I2C通信协议传输数据
+    mpu.initialize(); // 初始化MPU6050传感器
+
+&#125;
+
+// 定义卡尔曼滤波更新函数
+void kalmanFilterUpdate() &#123;
+    int16_t ax, ay, az, gx, gy, gz;  // 定义存储加速度和陀螺仪数据的变量
+
+    // 从MPU6050读取加速度和陀螺仪的原始数据
+    mpu.getMotion6(&amp;ax, &amp;ay, &amp;az, &amp;gx, &amp;gy, &amp;gz);
+
+    // 计算加速度计提供的倾角（这里以ay, az计算roll角为例）
+    float acc_angle = atan2(ay, az) * RAD_TO_DEG;
+
+    // 将陀螺仪的x轴角速度从原始单位转换为度/秒
+    float gyro_rate = gx / 131.0;
+    
+    
+    // 用当前角速度和时间间隔积分更新roll角度（简单积分，未应用卡尔曼滤波）
+    roll += gyro_rate * dt;
+    
+    // 卡尔曼滤波预测阶段：更新预测误差协方差矩阵P
+    P[0][0] += dt * (dt*P[1][1] - P[0][1] - P[1][0] + Q_angle);
+    P[0][1] -= dt * P[1][1];
+    P[1][0] -= dt * P[1][1];
+    P[1][1] += Q_gyro * dt;
+    
+    // 计算卡尔曼增益K
+    float S = P[0][0] + R_angle;
+    float K[2];
+    K[0] = P[0][0] / S;
+    K[1] = P[1][0] / S;
+    
+    // 更新阶段：计算测量残差y，并更新状态估计roll和协方差矩阵P
+    float y = acc_angle - roll;
+    roll += K[0] * y;
+    P[0][0] -= K[0] * P[0][0];
+    P[0][1] -= K[0] * P[0][1];
+    P[1][0] -= K[1] * P[0][0];
+    P[1][1] -= K[1] * P[0][1];
+    
+    // 打印当前估算的roll角度和陀螺仪x轴角速度
+    float gyroRateX = gx / 131.0f; //角速度
+    Serial.print(roll);
+    Serial.print(&#39;,&#39;);
+    Serial.println(gyroRateX);
+    delay(10);
+&#125;
+
+void loop() &#123;
+    kalmanFilterUpdate();
+&#125;
+</code></pre>
+<h2 id="3-4-电机驱动模块"><a href="#3-4-电机驱动模块" class="headerlink" title="3.4 电机驱动模块"></a>3.4 电机驱动模块</h2><h3 id="3-4-1-电机的选择"><a href="#3-4-1-电机的选择" class="headerlink" title="3.4.1 电机的选择"></a>3.4.1 电机的选择</h3><p>电机选择简单的直流电机就可以，但是本人使用了带编码器的直流电机，后续可以升级，也为直流电机的PID闭环控制打下基础。</p>
+<h3 id="3-4-2-电机驱动板"><a href="#3-4-2-电机驱动板" class="headerlink" title="3.4.2 电机驱动板"></a>3.4.2 电机驱动板</h3><p>常见的直流电机驱动板为TB6612、DRV8833和L298N，不同的驱动器驱动代码和效率不同，这里采用DRV8833来驱动二路电机。</p>
+<h3 id="3-4-3-硬件连接"><a href="#3-4-3-硬件连接" class="headerlink" title="3.4.3 硬件连接"></a>3.4.3 硬件连接</h3><h3 id="3-4-4-电机驱动函数"><a href="#3-4-4-电机驱动函数" class="headerlink" title="3.4.4 电机驱动函数"></a>3.4.4 电机驱动函数</h3><pre><code>// 电机控制引脚定义
+#define MOT_A1_PIN 26   // 左电机PWM控制引脚
+#define MOT_B1_PIN 33  // 右电机PWM控制引脚
+#define MOT_A2_PIN 27   // 左电机方向控制引脚
+#define MOT_B2_PIN 32  // 右电机方向控制引脚
+
+void setup() &#123;
+    // 设置电机控制引脚为输出模式
+    pinMode(MOT_A1_PIN, OUTPUT);
+    pinMode(MOT_A2_PIN, OUTPUT);
+    pinMode(MOT_B1_PIN, OUTPUT);
+    pinMode(MOT_B2_PIN, OUTPUT);
+
+    // 关闭电机（默认状态）
+    digitalWrite(MOT_A1_PIN, LOW);
+    digitalWrite(MOT_A2_PIN, LOW);
+    digitalWrite(MOT_B1_PIN, LOW);
+    digitalWrite(MOT_B2_PIN, LOW);
+&#125;
+
+// 电机驱动函数，这里需要根据连线调整，保证极性正确
+void set_motor_pwm(int pwm, int IN1_PIN, int IN2_PIN)&#123;
+    if (pwm &lt; 0) &#123;  
+        analogWrite(IN1_PIN, -pwm);
+        digitalWrite(IN2_PIN, LOW);
+    
+    &#125; else &#123; 
+        digitalWrite(IN1_PIN, LOW);
+        analogWrite(IN2_PIN, pwm);
+    &#125;
+&#125;
+</code></pre>
+<h2 id="3-5-PID控制器"><a href="#3-5-PID控制器" class="headerlink" title="3.5 PID控制器"></a>3.5 PID控制器</h2><blockquote>
+<p>对于PID有另一篇文章进行详细讲解</p>
+</blockquote>
+<h3 id="3-5-1-如何应用PID控制"><a href="#3-5-1-如何应用PID控制" class="headerlink" title="3.5.1 如何应用PID控制"></a>3.5.1 如何应用PID控制</h3><p>梳理流程：PID控制器是对反馈信号和目标值求误差之后，将误差值进行处理，然后输入到系统中。那么在小车案例中，就是将MPU6050得到的角度值与设定的目标值进行比较之后，将误差值经过PID控制器，输出为电机的PWM信号，来控制电机旋转的角度和速度。</p>
+<h3 id="3-5-2-PID函数"><a href="#3-5-2-PID函数" class="headerlink" title="3.5.2 PID函数"></a>3.5.2 PID函数</h3><pre><code>#define Kp 25.0 //比例系数
+#define Ki 0.005 //积分系数
+#define Kd 0.5 // 微分系数
+float dt = 0.01; //采样时间间隔
+
+float calculatePID(float error) &#123;
+    float proportional = Kp * error;//比例
+    integral += Ki * error * dt;//积分
+    integral = constrain(integral, -200, 200); // 防止积分饱和
+    float derivative = Kd * (error - lastError) / dt;//微分
+    lastError = error;
+    return proportional + integral + derivative;//PID控制器输出
+&#125;
+
+void applyPIDControl() &#123;
+    float error = setpoint - roll;//误差
+    float motorOutput = calculatePID(error); //PID控制器输出motorOutput
+    motorOutput = constrain(motorOutput, -255, 255); //电机PWM
+    Serial.print(motorOutput);//打印
+    delay(10);
+    set_motor_pwm(motorOutput, MOT_A1_PIN , MOT_A2_PIN);//控制电机
+    set_motor_pwm(motorOutput, MOT_B1_PIN , MOT_B2_PIN);
+    
+&#125;
+
+void loop() &#123;
+
+    applyPIDControl();
+&#125;
+</code></pre>
+<h2 id="3-6-完整代码"><a href="#3-6-完整代码" class="headerlink" title="3.6 完整代码"></a>3.6 完整代码</h2><pre><code>#include &lt;Wire.h&gt;
+#include &lt;MPU6050.h&gt;
+
+MPU6050 mpu;
+
+#define RAD_TO_DEG 57.2957795131
+#define Kp 25.0
+#define Ki 0.005
+#define Kd 0.0 
+
+float dt = 0.01; 
+float roll, pitch;
+float Q_angle = 0.001;
+float Q_gyro = 0.003;
+float R_angle = 0.03;
+float P[2][2] = &#123;&#123;1, 0&#125;, &#123;0, 1&#125;&#125;;
+int setpoint = 0; // 初始角度目标值，可通过串口或其他方式动态设定
+
+// 电机控制引脚定义
+#define MOT_A1_PIN 26   // 左电机PWM控制引脚
+#define MOT_B1_PIN 33  // 右电机PWM控制引脚
+#define MOT_A2_PIN 27   // 左电机方向控制引脚
+#define MOT_B2_PIN 32  // 右电机方向控制引脚
+
+float integral = 0;
+float lastError = 0;
+
+void setup() &#123;
+    pinMode(MOT_A1_PIN, OUTPUT);
+    pinMode(MOT_A2_PIN, OUTPUT);
+    pinMode(MOT_B1_PIN, OUTPUT);
+    pinMode(MOT_B2_PIN, OUTPUT);
+    digitalWrite(MOT_A1_PIN, LOW);
+    digitalWrite(MOT_A2_PIN, LOW);
+    digitalWrite(MOT_B1_PIN, LOW);
+    digitalWrite(MOT_B2_PIN, LOW);
+    Serial.begin(9600);
+    Wire.begin(13, 15); 
+    mpu.initialize();
+
+&#125;
+// 定义卡尔曼滤波更新函数
+void kalmanFilterUpdate() &#123;
+    int16_t ax, ay, az, gx, gy, gz; 
+    mpu.getMotion6(&amp;ax, &amp;ay, &amp;az, &amp;gx, &amp;gy, &amp;gz);
+    float acc_angle = atan2(ay, az) * RAD_TO_DEG;
+    float gyro_rate = gx / 131.0;
+    roll += gyro_rate * dt;
+    P[0][0] += dt * (dt*P[1][1] - P[0][1] - P[1][0] + Q_angle);
+    P[0][1] -= dt * P[1][1];
+    P[1][0] -= dt * P[1][1];
+    P[1][1] += Q_gyro * dt;
+    float S = P[0][0] + R_angle;
+    float K[2];
+    K[0] = P[0][0] / S;
+    K[1] = P[1][0] / S;
+    float y = acc_angle - roll;
+    roll += K[0] * y;
+    P[0][0] -= K[0] * P[0][0];
+    P[0][1] -= K[0] * P[0][1];
+    P[1][0] -= K[1] * P[0][0];
+    P[1][1] -= K[1] * P[0][1];
+    float gyroRateX = gx / 131.0f; //角速度
+    Serial.print(roll);
+    Serial.print(&#39;,&#39;);
+    Serial.println(gyroRateX);
+    delay(10);
+&#125;
+
+float calculatePID(float error) &#123;
+    float proportional = Kp * error;
+    integral += Ki * error * dt;
+    // 防止积分饱和
+    integral = constrain(integral, -200, 200); 
+    float derivative = Kd * (error - lastError) / dt;
+    lastError = error;
+    return proportional + integral + derivative;
+&#125;
+
+// 电机驱动函数
+void set_motor_pwm(int pwm, int IN1_PIN, int IN2_PIN)&#123;
+    if (pwm &lt; 0) &#123;  // reverse speeds
+        analogWrite(IN1_PIN, -pwm);
+        digitalWrite(IN2_PIN, LOW);
+    
+    &#125; else &#123; // stop or forward
+        digitalWrite(IN1_PIN, LOW);
+        analogWrite(IN2_PIN, pwm);
+    &#125;
+&#125;
+
+void applyPIDControl() &#123;
+    float error = setpoint - roll;
+    float motorOutput = calculatePID(error);
+    motorOutput = constrain(motorOutput, -255, 255);
+    Serial.print(motorOutput);
+    delay(10);
+    set_motor_pwm(motorOutput, MOT_A1_PIN , MOT_A2_PIN);
+    set_motor_pwm(motorOutput, MOT_B1_PIN , MOT_B2_PIN);
+&#125;
+
+void loop() &#123;
+    kalmanFilterUpdate();
+    applyPIDControl();
+&#125;
+</code></pre>
+<h1 id="4-实物调试"><a href="#4-实物调试" class="headerlink" title="4 实物调试"></a>4 实物调试</h1><h1 id="5-电路板绘制"><a href="#5-电路板绘制" class="headerlink" title="5 电路板绘制"></a>5 电路板绘制</h1><p>由于在接完线之后发现有很多走线，并不美观，而且影响调试，所以计划绘制一块儿电路板，减少走线，使得更加美观一点。</p>
+
       
 
       
@@ -509,6 +757,18 @@ MathJax.Hub.Queue(function() {
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">项目</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Fusion</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">参数化建模</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Fusion API</a>
               </li>
             
             <div class="clearfix"></div>
